@@ -119,11 +119,30 @@ Todas las rutas empiezan con `/api` y responden JSON. Los errores tienen la form
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/health` | Estado del servidor |
+| GET | `/health` | Estado del servidor y de la IA |
 | GET, POST | `/subjects` | Listar o crear materias |
 | GET, PATCH, DELETE | `/subjects/<id>` | Ver, editar o eliminar una materia (borra también sus apuntes) |
 | GET, POST | `/subjects/<id>/notes` | Listar o crear apuntes de una materia |
-| GET, PATCH, DELETE | `/notes/<id>` | Ver, editar o eliminar un apunte |
+| GET, PATCH, DELETE | `/notes/<id>` | Ver, editar o eliminar un apunte (y su material de estudio) |
+| POST | `/notes/<id>/flashcards/generate` | Generar un borrador de tarjetas con IA (`{"count": 1-20}`) |
+| GET, POST | `/notes/<id>/flashcards` | Listar o guardar tarjetas |
+| PATCH, DELETE | `/flashcards/<id>` | Editar o eliminar una tarjeta |
+| POST | `/flashcards/<id>/review` | Registrar un repaso (`{"known": true}`) |
+| POST | `/notes/<id>/quizzes/generate` | Generar un borrador de cuestionario con IA (`{"count": 1-15}`) |
+| GET, POST | `/notes/<id>/quizzes` | Listar o guardar cuestionarios |
+| GET, DELETE | `/quizzes/<id>` | Ver o eliminar un cuestionario |
+| POST | `/notes/<id>/assistant` | Preguntar al asistente (`{"messages": [{"role", "content"}]}`) |
+
+Los endpoints `generate` no guardan nada: devuelven un borrador para que la app muestre el resultado y el estudiante decida si lo guarda.
+
+## Inteligencia artificial
+
+El backend usa la API de Anthropic con el modelo de `AI_MODEL` (por defecto `claude-sonnet-5-5`). La app nunca habla directo con la IA: siempre pasa por el backend, que guarda la clave.
+
+- **Tarjetas y cuestionarios:** usan salidas estructuradas (esquema JSON) con esfuerzo `medium`. El backend valida cada elemento, descarta los inválidos y mezcla las opciones de cada pregunta.
+- **Asistente:** esfuerzo `low` para responder rápido, con el apunte en el prompt del sistema y caché de prompts entre turnos.
+- **Respaldo ante rechazos:** las peticiones activan el respaldo del servidor (`fallbacks: "default"`), que reintenta en otro modelo si las salvaguardas de Claude rechazan una petición legítima.
+- **Modo simulado:** con `AI_PROVIDER=mock` el backend genera material mecánico a partir del apunte, sin llamar a ninguna API. Lo usan las pruebas y el CI.
 
 ## Variables de entorno
 

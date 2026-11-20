@@ -4,17 +4,55 @@ import re
 from typing import Any
 
 from flask import request
+from pydantic import BaseModel, ValidationError
 
 from .errors import ApiError
 
 REQUIRED_MESSAGE = "Este campo es obligatorio."
 
 
-def json_body() -> dict[str, Any]:
+def json_body(*, optional: bool = False) -> dict[str, Any]:
+    """Devuelve el cuerpo JSON. Con `optional=True` un cuerpo vacío equivale a `{}`."""
+    if optional and not request.get_data():
+        return {}
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         raise ApiError(400, "invalid_json", "El cuerpo de la petición debe ser un objeto JSON.")
     return data
+
+
+def _pydantic_message(issue: Any) -> str:
+    kind = issue["type"]
+    ctx = issue.get("ctx") or {}
+    if kind == "missing":
+        return REQUIRED_MESSAGE
+    if kind == "string_too_short":
+        return "No puede estar vacío."
+    if kind == "string_too_long":
+        return f"Máximo {ctx.get('max_length')} caracteres."
+    if kind in {"too_short", "too_long"}:
+        return "La cantidad de elementos no es válida."
+    if kind in {"string_type"}:
+        return "Debe ser texto."
+    if kind in {"int_type", "int_parsing", "int_from_float"}:
+        return "Debe ser un número entero."
+    if kind in {"less_than", "greater_than_equal", "less_than_equal", "greater_than"}:
+        return "El valor está fuera de rango."
+    if kind == "literal_error":
+        return "Valor no permitido."
+    return "Valor no válido."
+
+
+def parse_model[T: BaseModel](model: type[T], data: Any) -> T:
+    """Valida `data` con un modelo Pydantic y traduce los errores al formato de la API."""
+    try:
+        return model.model_validate(data)
+    except ValidationError as error:
+        fields: dict[str, str] = {}
+        for issue in error.errors():
+            key = ".".join(str(part) for part in issue["loc"]) or "body"
+            fields.setdefault(key, _pydantic_message(issue))
+        raise ApiError(422, "validation_error", "Revisa los datos enviados.", fields) from error
 
 
 class Validator:

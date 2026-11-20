@@ -14,12 +14,15 @@ import { useTheme } from '@/hooks/use-theme';
 import { api } from '@/lib/api';
 import type { Quiz } from '@/lib/types';
 
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
 export default function QuizScreen() {
   const id = Number(useLocalSearchParams<{ id: string }>().id);
   const { data: quiz, error, reload } = useResource(`quiz-${id}`, () => api.getQuiz(id));
   // Respuesta elegida en cada pregunta (null = sin responder).
   const [answers, setAnswers] = useState<(number | null)[] | null>(null);
   const [position, setPosition] = useState(0);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
 
   if (!quiz) {
     return error ? <ErrorView error={error} onRetry={reload} /> : <LoadingView />;
@@ -28,14 +31,27 @@ export default function QuizScreen() {
   const current = answers ?? quiz.questions.map(() => null);
   const total = quiz.questions.length;
 
+  async function saveAttempt() {
+    setSaveState('saving');
+    try {
+      await api.createAttempt(id, current);
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+  }
+
   if (position >= total) {
     return (
       <Results
         quiz={quiz}
         answers={current}
+        saveState={saveState}
+        onRetrySave={saveAttempt}
         onRetry={() => {
           setAnswers(null);
           setPosition(0);
+          setSaveState('idle');
         }}
       />
     );
@@ -62,7 +78,10 @@ export default function QuizScreen() {
         {answered && (
           <Button
             title={isLast ? 'Ver resultados' : 'Siguiente pregunta'}
-            onPress={() => setPosition(position + 1)}
+            onPress={() => {
+              setPosition(position + 1);
+              if (isLast) void saveAttempt();
+            }}
           />
         )}
       </Screen>
@@ -98,13 +117,37 @@ function ProgressDots({
   );
 }
 
+function SaveStatus({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
+  if (state === 'error') {
+    return (
+      <View style={styles.saveError}>
+        <ThemedText type="small" themeColor="danger" style={styles.saveText}>
+          No se pudo guardar el resultado en tu progreso.
+        </ThemedText>
+        <Button title="Reintentar" icon="refresh" variant="ghost" onPress={onRetry} />
+      </View>
+    );
+  }
+  const text =
+    state === 'saving' ? 'Guardando resultado…' : state === 'saved' ? 'Resultado guardado en tu progreso.' : '';
+  return text ? (
+    <ThemedText type="caption" themeColor="textSecondary" style={styles.saveText}>
+      {text}
+    </ThemedText>
+  ) : null;
+}
+
 function Results({
   quiz,
   answers,
+  saveState,
+  onRetrySave,
   onRetry,
 }: {
   quiz: Quiz;
   answers: (number | null)[];
+  saveState: SaveState;
+  onRetrySave: () => void;
   onRetry: () => void;
 }) {
   const colors = useTheme();
@@ -127,6 +170,7 @@ function Results({
           <ThemedText type="defaultBold">
             {correct} de {total} respuestas correctas
           </ThemedText>
+          <SaveStatus state={saveState} onRetry={onRetrySave} />
         </Card>
 
         {weakTopics.length > 0 ? (
@@ -189,5 +233,11 @@ const styles = StyleSheet.create({
   },
   review: {
     gap: Spacing.two,
+  },
+  saveError: {
+    alignItems: 'center',
+  },
+  saveText: {
+    textAlign: 'center',
   },
 });

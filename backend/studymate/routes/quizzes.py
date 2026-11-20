@@ -4,9 +4,9 @@ from sqlalchemy.orm import selectinload
 
 from ..ai import get_ai
 from ..ai.schemas import QuizDraft
-from ..errors import not_found
+from ..errors import ApiError, not_found
 from ..extensions import db
-from ..models import Quiz, QuizQuestion
+from ..models import Quiz, QuizAttempt, QuizQuestion
 from ..validation import Validator, json_body, parse_model
 from .notes import ai_context, get_note
 
@@ -43,10 +43,62 @@ def list_quizzes(note_id: int):
     quizzes = db.session.scalars(
         select(Quiz)
         .where(Quiz.note_id == note_id)
-        .options(selectinload(Quiz.questions))
+        .options(selectinload(Quiz.questions), selectinload(Quiz.attempts))
         .order_by(Quiz.created_at.desc(), Quiz.id.desc())
     ).all()
     return jsonify([quiz.to_summary() for quiz in quizzes])
+
+
+def _validate_answers(data: dict, question_count: int) -> list[int | None]:
+    answers = data.get("answers")
+    valid = (
+        isinstance(answers, list)
+        and len(answers) == question_count
+        and all(
+            answer is None
+            or (isinstance(answer, int) and not isinstance(answer, bool) and 0 <= answer <= 3)
+            for answer in answers
+        )
+    )
+    if not valid:
+        raise ApiError(
+            422,
+            "validation_error",
+            "Revisa los datos enviados.",
+            {"answers": f"Debe ser una lista de {question_count} respuestas (0 a 3 o null)."},
+        )
+    return answers
+
+
+@bp.post("/quizzes/<int:quiz_id>/attempts")
+def create_attempt(quiz_id: int):
+    """Califica las respuestas del estudiante y guarda el resultado."""
+    quiz = get_quiz(quiz_id)
+    answers = _validate_answers(json_body(), len(quiz.questions))
+    results = [
+        {
+            "question_id": question.id,
+            "selected_index": selected,
+            "correct": selected == question.correct_index,
+            "topic": question.topic,
+        }
+        for question, selected in zip(quiz.questions, answers, strict=True)
+    ]
+    attempt = QuizAttempt(
+        quiz=quiz,
+        score=sum(result["correct"] for result in results),
+        total=len(results),
+        answers=results,
+    )
+    db.session.add(attempt)
+    db.session.commit()
+    return jsonify(attempt.to_dict()), 201
+
+
+@bp.get("/quizzes/<int:quiz_id>/attempts")
+def list_attempts(quiz_id: int):
+    quiz = get_quiz(quiz_id)
+    return jsonify([attempt.to_dict() for attempt in reversed(quiz.attempts)])
 
 
 @bp.post("/notes/<int:note_id>/quizzes")

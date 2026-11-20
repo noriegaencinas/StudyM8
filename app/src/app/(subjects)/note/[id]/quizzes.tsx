@@ -77,6 +77,11 @@ function QuizRow({ quiz, onDelete }: { quiz: QuizSummary; onDelete: () => void }
           <ThemedText type="caption" themeColor="textSecondary">
             {plural(quiz.question_count, 'pregunta', 'preguntas')} · {formatDate(quiz.created_at)}
           </ThemedText>
+          <ThemedText type="small" themeColor={quiz.last_percent === null ? 'textSecondary' : 'text'}>
+            {quiz.last_percent === null
+              ? 'Sin resolver'
+              : `Último: ${quiz.last_percent}% · Mejor: ${quiz.best_percent}%`}
+          </ThemedText>
         </View>
         <Pressable
           accessibilityRole="button"

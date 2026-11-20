@@ -131,9 +131,13 @@ Todas las rutas empiezan con `/api` y responden JSON. Los errores tienen la form
 | POST | `/notes/<id>/quizzes/generate` | Generar un borrador de cuestionario con IA (`{"count": 1-15}`) |
 | GET, POST | `/notes/<id>/quizzes` | Listar o guardar cuestionarios |
 | GET, DELETE | `/quizzes/<id>` | Ver o eliminar un cuestionario |
+| GET, POST | `/quizzes/<id>/attempts` | Historial de intentos, o calificar y guardar uno (`{"answers": [0, 2, null, …]}`) |
+| GET | `/progress` | Dominio general y por materia, temas a reforzar e intentos recientes |
 | POST | `/notes/<id>/assistant` | Preguntar al asistente (`{"messages": [{"role", "content"}]}`) |
 
 Los endpoints `generate` no guardan nada: devuelven un borrador para que la app muestre el resultado y el estudiante decida si lo guarda.
+
+En `/progress`, el **dominio** de una materia es el promedio del último intento de cada cuestionario (volver a resolver uno reemplaza el resultado anterior). Un tema se marca **para reforzar** cuando sus aciertos en esos últimos intentos están por debajo del 70 %.
 
 ## Inteligencia artificial
 

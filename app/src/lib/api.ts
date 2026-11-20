@@ -6,7 +6,9 @@ import type {
   Note,
   NoteInput,
   NoteSummary,
+  Progress,
   Quiz,
+  QuizAttempt,
   QuizDraft,
   QuizSummary,
   Subject,
@@ -129,6 +131,13 @@ export const api = {
     request<Quiz>(`/api/notes/${noteId}/quizzes`, { method: 'POST', body: quiz }),
   getQuiz: (id: number) => request<Quiz>(`/api/quizzes/${id}`),
   deleteQuiz: (id: number) => request<void>(`/api/quizzes/${id}`, { method: 'DELETE' }),
+  createAttempt: (quizId: number, answers: (number | null)[]) =>
+    request<QuizAttempt>(`/api/quizzes/${quizId}/attempts`, {
+      method: 'POST',
+      body: { answers },
+    }),
+
+  getProgress: () => request<Progress>('/api/progress'),
 
   askAssistant: (noteId: number, messages: ChatMessage[]) =>
     request<{ reply: string }>(`/api/notes/${noteId}/assistant`, {

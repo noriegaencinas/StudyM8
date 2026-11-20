@@ -72,6 +72,51 @@ export type QuizSummary = Timestamps & {
   note_id: number;
   title: string;
   question_count: number;
+  attempt_count: number;
+  best_percent: number | null;
+  last_percent: number | null;
+};
+
+export type QuizAttempt = {
+  id: number;
+  quiz_id: number;
+  score: number;
+  total: number;
+  percent: number;
+  created_at: string;
+};
+
+export type Progress = {
+  totals: {
+    subjects: number;
+    notes: number;
+    quizzes: number;
+    attempts: number;
+    mastery_percent: number | null;
+    flashcards: number;
+    flashcards_reviewed: number;
+    flashcard_recall_percent: number | null;
+  };
+  subjects: (SubjectRef & {
+    note_count: number;
+    attempt_count: number;
+    mastery_percent: number | null;
+    last_attempt_at: string | null;
+  })[];
+  weak_topics: {
+    topic: string;
+    subject: SubjectRef;
+    note_id: number;
+    correct: number;
+    total: number;
+    percent: number;
+  }[];
+  recent_attempts: (QuizAttempt & {
+    quiz_title: string;
+    note_id: number;
+    note_title: string;
+    subject: SubjectRef;
+  })[];
 };
 
 export type Quiz = QuizSummary & {

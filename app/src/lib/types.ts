@@ -37,3 +37,50 @@ export type NoteInput = {
   title: string;
   content: string;
 };
+
+export type FlashcardDraft = {
+  front: string;
+  back: string;
+};
+
+export type Flashcard = Timestamps &
+  FlashcardDraft & {
+    id: number;
+    note_id: number;
+    known_count: number;
+    unknown_count: number;
+    last_reviewed_at: string | null;
+  };
+
+export type QuestionDraft = {
+  prompt: string;
+  options: string[];
+  correct_index: number;
+  explanation: string;
+  topic: string;
+};
+
+export type QuizDraft = {
+  title: string;
+  questions: QuestionDraft[];
+};
+
+export type QuizQuestion = QuestionDraft & { id: number };
+
+export type QuizSummary = Timestamps & {
+  id: number;
+  note_id: number;
+  title: string;
+  question_count: number;
+};
+
+export type Quiz = QuizSummary & {
+  note: { id: number; title: string };
+  subject: SubjectRef;
+  questions: QuizQuestion[];
+};
+
+export type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};

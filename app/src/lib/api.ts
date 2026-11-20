@@ -1,5 +1,17 @@
 import { API_URL } from './config';
-import type { Note, NoteInput, NoteSummary, Subject, SubjectInput } from './types';
+import type {
+  ChatMessage,
+  Flashcard,
+  FlashcardDraft,
+  Note,
+  NoteInput,
+  NoteSummary,
+  Quiz,
+  QuizDraft,
+  QuizSummary,
+  Subject,
+  SubjectInput,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -20,6 +32,8 @@ type RequestOptions = {
 };
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+/** Las peticiones de IA pueden tardar bastante con apuntes largos. */
+const AI_TIMEOUT_MS = 150_000;
 
 async function request<T>(
   path: string,
@@ -87,6 +101,41 @@ export const api = {
   updateNote: (id: number, input: Partial<NoteInput>) =>
     request<Note>(`/api/notes/${id}`, { method: 'PATCH', body: input }),
   deleteNote: (id: number) => request<void>(`/api/notes/${id}`, { method: 'DELETE' }),
+
+  generateFlashcards: (noteId: number, count: number) =>
+    request<{ flashcards: FlashcardDraft[] }>(`/api/notes/${noteId}/flashcards/generate`, {
+      method: 'POST',
+      body: { count },
+      timeoutMs: AI_TIMEOUT_MS,
+    }),
+  listFlashcards: (noteId: number) => request<Flashcard[]>(`/api/notes/${noteId}/flashcards`),
+  saveFlashcards: (noteId: number, flashcards: FlashcardDraft[]) =>
+    request<Flashcard[]>(`/api/notes/${noteId}/flashcards`, {
+      method: 'POST',
+      body: { flashcards },
+    }),
+  deleteFlashcard: (id: number) => request<void>(`/api/flashcards/${id}`, { method: 'DELETE' }),
+  reviewFlashcard: (id: number, known: boolean) =>
+    request<Flashcard>(`/api/flashcards/${id}/review`, { method: 'POST', body: { known } }),
+
+  generateQuiz: (noteId: number, count: number) =>
+    request<QuizDraft>(`/api/notes/${noteId}/quizzes/generate`, {
+      method: 'POST',
+      body: { count },
+      timeoutMs: AI_TIMEOUT_MS,
+    }),
+  listQuizzes: (noteId: number) => request<QuizSummary[]>(`/api/notes/${noteId}/quizzes`),
+  saveQuiz: (noteId: number, quiz: QuizDraft) =>
+    request<Quiz>(`/api/notes/${noteId}/quizzes`, { method: 'POST', body: quiz }),
+  getQuiz: (id: number) => request<Quiz>(`/api/quizzes/${id}`),
+  deleteQuiz: (id: number) => request<void>(`/api/quizzes/${id}`, { method: 'DELETE' }),
+
+  askAssistant: (noteId: number, messages: ChatMessage[]) =>
+    request<{ reply: string }>(`/api/notes/${noteId}/assistant`, {
+      method: 'POST',
+      body: { messages },
+      timeoutMs: AI_TIMEOUT_MS,
+    }),
 };
 
 export function errorMessage(error: unknown): string {

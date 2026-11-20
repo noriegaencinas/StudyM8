@@ -17,7 +17,8 @@ Tutor universitario con IA: una app móvil que convierte tus apuntes en tarjetas
 ```
 StudyM8/
 ├── app/                  # App móvil (Expo + React Native + TypeScript)
-│   ├── App.tsx           # Pantalla principal
+│   ├── src/app/          # Pantallas (rutas de Expo Router)
+│   ├── src/components/   # Componentes reutilizables
 │   ├── app.json          # Configuración de Expo
 │   ├── eslint.config.js  # Reglas del linter
 │   └── package.json
@@ -41,7 +42,7 @@ El backend (Python + Flask) se agregará en una carpeta `backend/` en una etapa 
 | [Expo Go](https://expo.dev/go) | en tu teléfono Android o iOS, para probar la app |
 | Git | cualquier versión reciente |
 
-> ⚠️ El proyecto usa **Expo SDK 57**. Instala una versión de Expo Go compatible con SDK 57 y usa Node 22.13 o superior (compruébalo con `node -v`).
+> ⚠️ El proyecto usa **Expo SDK 58** con **Expo Router**. Instala una versión de Expo Go compatible con SDK 58 y usa Node 22.13 o superior (compruébalo con `node -v`).
 
 ## Instalación y ejecución
 

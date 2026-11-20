@@ -138,13 +138,27 @@ class Quiz(TimestampMixin, db.Model):
         passive_deletes=True,
         order_by="QuizQuestion.position",
     )
+    attempts: Mapped[list["QuizAttempt"]] = relationship(
+        back_populates="quiz",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by=lambda: [QuizAttempt.created_at, QuizAttempt.id],
+    )
+
+    @property
+    def latest_attempt(self) -> "QuizAttempt | None":
+        return self.attempts[-1] if self.attempts else None
 
     def to_summary(self) -> dict[str, Any]:
+        latest = self.latest_attempt
         return {
             "id": self.id,
             "note_id": self.note_id,
             "title": self.title,
             "question_count": len(self.questions),
+            "attempt_count": len(self.attempts),
+            "best_percent": max((a.percent for a in self.attempts), default=None),
+            "last_percent": latest.percent if latest else None,
             **self.timestamps(),
         }
 
@@ -179,4 +193,38 @@ class QuizQuestion(db.Model):
             "correct_index": self.correct_index,
             "explanation": self.explanation,
             "topic": self.topic,
+        }
+
+
+class QuizAttempt(db.Model):
+    """Resultado de resolver un cuestionario.
+
+    `answers` guarda, por pregunta: question_id, selected_index (o None), correct
+    y el topic de la pregunta en ese momento (para calcular temas a reforzar).
+    """
+
+    __tablename__ = "quiz_attempts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    quiz_id: Mapped[int] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"), index=True)
+    score: Mapped[int] = mapped_column(Integer)
+    total: Mapped[int] = mapped_column(Integer)
+    answers: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    quiz: Mapped[Quiz] = relationship(back_populates="attempts")
+
+    @property
+    def percent(self) -> int:
+        return round(self.score * 100 / self.total) if self.total else 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "quiz_id": self.quiz_id,
+            "score": self.score,
+            "total": self.total,
+            "percent": self.percent,
+            "answers": self.answers,
+            "created_at": isoformat(self.created_at),
         }

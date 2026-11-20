@@ -7,12 +7,19 @@ TEST_CONFIG = {
     "SQLALCHEMY_DATABASE_URI": "sqlite://",
     "AI_PROVIDER": "mock",
     "AI_API_KEY": "",
+    "AI_MODEL": "claude-sonnet-5-5",
 }
 
 
 @pytest.fixture
-def app():
-    return create_app(TEST_CONFIG)
+def make_app():
+    """Crea una app de prueba con configuración adicional."""
+    return lambda **overrides: create_app({**TEST_CONFIG, **overrides})
+
+
+@pytest.fixture
+def app(make_app):
+    return make_app()
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 
-from ..errors import not_found
+from ..ai import NoteContext
+from ..errors import ApiError, not_found
 from ..extensions import db
 from ..models import Note
 from ..validation import Validator, json_body
@@ -8,6 +9,7 @@ from ..validation import Validator, json_body
 bp = Blueprint("notes", __name__, url_prefix="/api/notes")
 
 MAX_NOTE_CONTENT = 50_000
+MIN_CONTENT_FOR_AI = 40
 
 
 def get_note(note_id: int) -> Note:
@@ -15,6 +17,19 @@ def get_note(note_id: int) -> Note:
     if note is None:
         raise not_found("El apunte")
     return note
+
+
+def ai_context(note: Note) -> NoteContext:
+    """Prepara el apunte para la IA; exige un mínimo de contenido."""
+    content = note.content.strip()
+    if len(content) < MIN_CONTENT_FOR_AI:
+        raise ApiError(
+            422,
+            "note_too_short",
+            f"El apunte necesita más contenido (al menos {MIN_CONTENT_FOR_AI} caracteres) "
+            "para usar la IA.",
+        )
+    return NoteContext(subject=note.subject.name, title=note.title, content=content)
 
 
 def validate_note(*, partial: bool) -> dict:
